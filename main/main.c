@@ -1,6 +1,5 @@
 #include <string.h>
 #include <stdlib.h>
-#include <time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
@@ -12,12 +11,12 @@
 #include "lwip/sys.h"
 #include "esp_http_server.h"
 #include "esp_mac.h"
+#include "log_reader.h"
 
 #define EXAMPLE_ESP_WIFI_SSID      "ESP32_Open_AP"
 #define EXAMPLE_MAX_STA_CONN       4
 
 static const char *TAG = "wifi softAP";
-static int latest_random_number = 0;
 static httpd_handle_t server = NULL;
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
@@ -39,7 +38,7 @@ static esp_err_t http_server_handler(httpd_req_t *req)
     const char* resp_str = "<!DOCTYPE html>"
                            "<html>"
                            "<head>"
-                           "<title>ESP32 WebSocket</title>"
+                           "<title>ESP32 WebSocket Log Viewer</title>"
                            "<script>"
                            "var socket;"
                            "function initWebSocket() {"
@@ -51,7 +50,9 @@ static esp_err_t http_server_handler(httpd_req_t *req)
                            "    };"
                            "    socket.onmessage = function(event) {"
                            "        console.log('Received message:', event.data);"
-                           "        document.getElementById('random').innerHTML = event.data;"
+                           "        var logData = JSON.parse(event.data);"
+                           "        document.getElementById('timestamp').textContent = logData.timestamp;"
+                           "        document.getElementById('message').textContent = logData.message;"
                            "    };"
                            "    socket.onerror = function(error) {"
                            "        console.error('WebSocket error:', error);"
@@ -61,20 +62,21 @@ static esp_err_t http_server_handler(httpd_req_t *req)
                            "        setTimeout(initWebSocket, 2000);"
                            "    };"
                            "}"
-                           "function requestRandomNumber() {"
+                           "function requestLatestLog() {"
                            "    if (socket && socket.readyState === WebSocket.OPEN) {"
-                           "        socket.send('get_random');"
+                           "        socket.send('get_log');"
                            "    }"
                            "}"
                            "window.addEventListener('load', function() {"
                            "    initWebSocket();"
-                           "    setInterval(requestRandomNumber, 1000);"
+                           "    setInterval(requestLatestLog, 1000);"
                            "});"
                            "</script>"
                            "</head>"
                            "<body>"
-                           "<h1>ESP32 Random Number</h1>"
-                           "<p>Random Number: <span id='random'>Waiting...</span></p>"
+                           "<h1>ESP32 Log Viewer</h1>"
+                           "<p>Timestamp: <span id='timestamp'>Waiting...</span></p>"
+                           "<p>Message: <span id='message'>Waiting...</span></p>"
                            "</body>"
                            "</html>";
     httpd_resp_set_type(req, "text/html");
@@ -116,8 +118,10 @@ static esp_err_t websocket_handler(httpd_req_t *req)
         ESP_LOGI(TAG, "Received packet with message: %s", ws_pkt.payload);
     }
 
-    char response[32];
-    snprintf(response, sizeof(response), "%d", latest_random_number);
+    LogEntry latest_log = get_latest_log();
+    char response[256];
+    snprintf(response, sizeof(response), "{\"timestamp\":\"%s\",\"message\":\"%s\"}", 
+             latest_log.timestamp, latest_log.message);
     ws_pkt.payload = (uint8_t*)response;
     ws_pkt.len = strlen(response);
 
@@ -197,16 +201,6 @@ void wifi_init_softap(void)
              EXAMPLE_ESP_WIFI_SSID, 1);
 }
 
-void random_number_task(void *pvParameters)
-{
-    srand(time(NULL));  // Initialize random seed
-    while(1) {
-        latest_random_number = rand() % 100;  // Generate a random number between 0 and 99
-        ESP_LOGI("RANDOM", "Random number: %d", latest_random_number);
-        vTaskDelay(1000 / portTICK_PERIOD_MS);  // Delay for 1 second
-    }
-}
-
 void app_main(void)
 {
     esp_err_t ret = nvs_flash_init();
@@ -218,12 +212,11 @@ void app_main(void)
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
     wifi_init_softap();
+    init_log_reader();
     server = start_webserver();
 
     if (server == NULL) {
         ESP_LOGE(TAG, "Failed to start web server. Restarting...");
         esp_restart();
     }
-
-    xTaskCreate(&random_number_task, "random_number_task", 4096, NULL, 5, NULL);
 }
