@@ -4,7 +4,7 @@
 cmake_minimum_required(VERSION 3.5)
 
 file(MAKE_DIRECTORY
-  "C:/Espressif/frameworks/esp-idf-v5.2.2/components/bootloader/subproject"
+  "C:/Users/jhualde/esp/v5.2.2/esp-idf/components/bootloader/subproject"
   "C:/Users/jhualde/Desktop/workspace/ClioWebServer/build/bootloader"
   "C:/Users/jhualde/Desktop/workspace/ClioWebServer/build/bootloader-prefix"
   "C:/Users/jhualde/Desktop/workspace/ClioWebServer/build/bootloader-prefix/tmp"

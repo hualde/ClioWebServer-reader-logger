@@ -1,5 +1,6 @@
-#include <stdio.h>
 #include <string.h>
+#include <stdlib.h>
+#include <time.h>
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_system.h"
@@ -7,90 +8,160 @@
 #include "esp_event.h"
 #include "esp_log.h"
 #include "nvs_flash.h"
+#include "lwip/err.h"
+#include "lwip/sys.h"
 #include "esp_http_server.h"
-#include "driver/twai.h"
 #include "esp_mac.h"
 
-#define EXAMPLE_ESP_WIFI_SSID      "ESP32_AP"
-#define EXAMPLE_ESP_WIFI_PASS      "password123"
+#define EXAMPLE_ESP_WIFI_SSID      "ESP32_Open_AP"
 #define EXAMPLE_MAX_STA_CONN       4
 
-#define TX_GPIO_NUM                18
-#define RX_GPIO_NUM                19
-#define TAG                        "ESP32_CAN_WEB"
-
-static char last_can_message[100] = "No message received yet";
+static const char *TAG = "wifi softAP";
+static int latest_random_number = 0;
 static httpd_handle_t server = NULL;
-
-static esp_err_t root_get_handler(httpd_req_t *req)
-{
-    const char* response = "<html><head><title>ESP32 CAN Reader</title></head>"
-                           "<body><h1>ESP32 CAN Reader</h1>"
-                           "<p>Last CAN message: <span id='can-message'></span></p>"
-                           "<script>"
-                           "var source = new EventSource('/events');"
-                           "source.onmessage = function(event) {"
-                           "  document.getElementById('can-message').innerHTML = event.data;"
-                           "};"
-                           "</script></body></html>";
-    httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
-    return ESP_OK;
-}
-
-static esp_err_t events_get_handler(httpd_req_t *req)
-{
-    httpd_resp_set_type(req, "text/event-stream");
-    httpd_resp_set_hdr(req, "Cache-Control", "no-cache");
-    httpd_resp_set_hdr(req, "Connection", "keep-alive");
-    
-    while (1) {
-        char *data = last_can_message;
-        httpd_resp_sendstr_chunk(req, "data: ");
-        httpd_resp_sendstr_chunk(req, data);
-        httpd_resp_sendstr_chunk(req, "\n\n");
-        vTaskDelay(1000 / portTICK_PERIOD_MS);  // Send update every second
-    }
-    return ESP_OK;
-}
-
-static const httpd_uri_t root = {
-    .uri       = "/",
-    .method    = HTTP_GET,
-    .handler   = root_get_handler,
-    .user_ctx  = NULL
-};
-
-static const httpd_uri_t events = {
-    .uri       = "/events",
-    .method    = HTTP_GET,
-    .handler   = events_get_handler,
-    .user_ctx  = NULL
-};
-
-static httpd_handle_t start_webserver(void)
-{
-    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
-    config.lru_purge_enable = true;
-
-    if (httpd_start(&server, &config) == ESP_OK) {
-        httpd_register_uri_handler(server, &root);
-        httpd_register_uri_handler(server, &events);
-    }
-    return server;
-}
 
 static void wifi_event_handler(void* arg, esp_event_base_t event_base,
                                int32_t event_id, void* event_data)
 {
     if (event_id == WIFI_EVENT_AP_STACONNECTED) {
         wifi_event_ap_staconnected_t* event = (wifi_event_ap_staconnected_t*) event_data;
-        ESP_LOGI(TAG, "station "MACSTR" join, AID=%d",
+        ESP_LOGI(TAG, "Station "MACSTR" connected, AID=%d",
                  MAC2STR(event->mac), event->aid);
     } else if (event_id == WIFI_EVENT_AP_STADISCONNECTED) {
         wifi_event_ap_stadisconnected_t* event = (wifi_event_ap_stadisconnected_t*) event_data;
-        ESP_LOGI(TAG, "station "MACSTR" leave, AID=%d",
+        ESP_LOGI(TAG, "Station "MACSTR" disconnected, AID=%d",
                  MAC2STR(event->mac), event->aid);
     }
+}
+
+static esp_err_t http_server_handler(httpd_req_t *req)
+{
+    const char* resp_str = "<!DOCTYPE html>"
+                           "<html>"
+                           "<head>"
+                           "<title>ESP32 WebSocket</title>"
+                           "<script>"
+                           "var socket;"
+                           "function initWebSocket() {"
+                           "    console.log('Trying to open a WebSocket connection...');"
+                           "    socket = new WebSocket('ws://' + window.location.host + '/ws');"
+                           "    socket.onopen = function(event) {"
+                           "        console.log('WebSocket connection opened');"
+                           "        socket.send('Hello Server!');"
+                           "    };"
+                           "    socket.onmessage = function(event) {"
+                           "        console.log('Received message:', event.data);"
+                           "        document.getElementById('random').innerHTML = event.data;"
+                           "    };"
+                           "    socket.onerror = function(error) {"
+                           "        console.error('WebSocket error:', error);"
+                           "    };"
+                           "    socket.onclose = function(event) {"
+                           "        console.log('WebSocket connection closed');"
+                           "        setTimeout(initWebSocket, 2000);"
+                           "    };"
+                           "}"
+                           "function requestRandomNumber() {"
+                           "    if (socket && socket.readyState === WebSocket.OPEN) {"
+                           "        socket.send('get_random');"
+                           "    }"
+                           "}"
+                           "window.addEventListener('load', function() {"
+                           "    initWebSocket();"
+                           "    setInterval(requestRandomNumber, 1000);"
+                           "});"
+                           "</script>"
+                           "</head>"
+                           "<body>"
+                           "<h1>ESP32 Random Number</h1>"
+                           "<p>Random Number: <span id='random'>Waiting...</span></p>"
+                           "</body>"
+                           "</html>";
+    httpd_resp_set_type(req, "text/html");
+    httpd_resp_send(req, resp_str, strlen(resp_str));
+    return ESP_OK;
+}
+
+static esp_err_t websocket_handler(httpd_req_t *req)
+{
+    if (req->method == HTTP_GET) {
+        ESP_LOGI(TAG, "Handshake done, the new connection was opened");
+        return ESP_OK;
+    }
+
+    httpd_ws_frame_t ws_pkt;
+    uint8_t *buf = NULL;
+    memset(&ws_pkt, 0, sizeof(httpd_ws_frame_t));
+    ws_pkt.type = HTTPD_WS_TYPE_TEXT;
+    
+    esp_err_t ret = httpd_ws_recv_frame(req, &ws_pkt, 0);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "httpd_ws_recv_frame failed with %d", ret);
+        return ret;
+    }
+
+    if (ws_pkt.len) {
+        buf = calloc(1, ws_pkt.len + 1);
+        if (buf == NULL) {
+            ESP_LOGE(TAG, "Failed to allocate memory for buf");
+            return ESP_ERR_NO_MEM;
+        }
+        ws_pkt.payload = buf;
+        ret = httpd_ws_recv_frame(req, &ws_pkt, ws_pkt.len);
+        if (ret != ESP_OK) {
+            ESP_LOGE(TAG, "httpd_ws_recv_frame failed with %d", ret);
+            free(buf);
+            return ret;
+        }
+        ESP_LOGI(TAG, "Received packet with message: %s", ws_pkt.payload);
+    }
+
+    char response[32];
+    snprintf(response, sizeof(response), "%d", latest_random_number);
+    ws_pkt.payload = (uint8_t*)response;
+    ws_pkt.len = strlen(response);
+
+    ret = httpd_ws_send_frame(req, &ws_pkt);
+    if (ret != ESP_OK) {
+        ESP_LOGE(TAG, "httpd_ws_send_frame failed with %d", ret);
+    }
+    
+    free(buf);
+    return ret;
+}
+
+static const httpd_uri_t ws = {
+    .uri        = "/ws",
+    .method     = HTTP_GET,
+    .handler    = websocket_handler,
+    .user_ctx   = NULL,
+    .is_websocket = true
+};
+
+static const httpd_uri_t root = {
+    .uri       = "/",
+    .method    = HTTP_GET,
+    .handler   = http_server_handler,
+    .user_ctx  = NULL
+};
+
+static httpd_handle_t start_webserver(void)
+{
+    httpd_config_t config = HTTPD_DEFAULT_CONFIG();
+    config.max_open_sockets = 4;
+    config.lru_purge_enable = true;
+
+    ESP_LOGI(TAG, "Starting server on port: '%d'", config.server_port);
+    esp_err_t ret = httpd_start(&server, &config);
+    if (ret == ESP_OK) {
+        ESP_LOGI(TAG, "Registering URI handlers");
+        httpd_register_uri_handler(server, &root);
+        httpd_register_uri_handler(server, &ws);
+        return server;
+    }
+
+    ESP_LOGE(TAG, "Error starting server!");
+    return NULL;
 }
 
 void wifi_init_softap(void)
@@ -113,33 +184,26 @@ void wifi_init_softap(void)
             .ssid = EXAMPLE_ESP_WIFI_SSID,
             .ssid_len = strlen(EXAMPLE_ESP_WIFI_SSID),
             .channel = 1,
-            .password = EXAMPLE_ESP_WIFI_PASS,
-            .max_connection = EXAMPLE_MAX_STA_CONN,
-            .authmode = WIFI_AUTH_WPA_WPA2_PSK
+            .authmode = WIFI_AUTH_OPEN,
+            .max_connection = EXAMPLE_MAX_STA_CONN
         },
     };
+
     ESP_ERROR_CHECK(esp_wifi_set_mode(WIFI_MODE_AP));
     ESP_ERROR_CHECK(esp_wifi_set_config(WIFI_IF_AP, &wifi_config));
     ESP_ERROR_CHECK(esp_wifi_start());
 
-    ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s password:%s",
-             EXAMPLE_ESP_WIFI_SSID, EXAMPLE_ESP_WIFI_PASS);
+    ESP_LOGI(TAG, "wifi_init_softap finished. SSID:%s channel:%d",
+             EXAMPLE_ESP_WIFI_SSID, 1);
 }
 
-void can_receive_task(void *pvParameters)
+void random_number_task(void *pvParameters)
 {
-    while (1) {
-        twai_message_t message;
-        if (twai_receive(&message, pdMS_TO_TICKS(10000)) == ESP_OK) {
-            snprintf(last_can_message, sizeof(last_can_message), 
-                     "ID: 0x%03lX, Data: 0x%02X%02X%02X%02X%02X%02X%02X%02X", 
-                     (unsigned long)message.identifier,
-                     message.data[0], message.data[1], message.data[2], message.data[3],
-                     message.data[4], message.data[5], message.data[6], message.data[7]);
-            ESP_LOGI(TAG, "Received: %s", last_can_message);
-        } else {
-            ESP_LOGI(TAG, "Failed to receive message");
-        }
+    srand(time(NULL));  // Initialize random seed
+    while(1) {
+        latest_random_number = rand() % 100;  // Generate a random number between 0 and 99
+        ESP_LOGI("RANDOM", "Random number: %d", latest_random_number);
+        vTaskDelay(1000 / portTICK_PERIOD_MS);  // Delay for 1 second
     }
 }
 
@@ -152,26 +216,14 @@ void app_main(void)
     }
     ESP_ERROR_CHECK(ret);
 
+    ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
     wifi_init_softap();
+    server = start_webserver();
 
-    twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(TX_GPIO_NUM, RX_GPIO_NUM, TWAI_MODE_NORMAL);
-    twai_timing_config_t t_config = TWAI_TIMING_CONFIG_500KBITS();
-    twai_filter_config_t f_config = TWAI_FILTER_CONFIG_ACCEPT_ALL();
-
-    if (twai_driver_install(&g_config, &t_config, &f_config) == ESP_OK) {
-        ESP_LOGI(TAG, "Driver installed");
-    } else {
-        ESP_LOGE(TAG, "Failed to install driver");
-        return;
+    if (server == NULL) {
+        ESP_LOGE(TAG, "Failed to start web server. Restarting...");
+        esp_restart();
     }
 
-    if (twai_start() == ESP_OK) {
-        ESP_LOGI(TAG, "Driver started");
-    } else {
-        ESP_LOGE(TAG, "Failed to start driver");
-        return;
-    }
-
-    start_webserver();
-    xTaskCreate(can_receive_task, "can_receive_task", 2048, NULL, 5, NULL);
+    xTaskCreate(&random_number_task, "random_number_task", 4096, NULL, 5, NULL);
 }
