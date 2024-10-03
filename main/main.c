@@ -50,6 +50,7 @@ TimerHandle_t restart_timer;
 static httpd_handle_t server = NULL;
 
 const char index_html[] = R"rawliteral(
+const char index_html[] = R"rawliteral(
 <!DOCTYPE HTML><html>
 <head>
   <title>ESP32 VIN Display</title>
@@ -63,8 +64,8 @@ const char index_html[] = R"rawliteral(
 <body>
   <h1>ESP32 VIN Display</h1>
   <table>
-    <tr><td>Vehicle VIN:</td><td><span id="vehicle_vin">%s</span></td></tr>
-    <tr><td>Column VIN:</td><td><span id="column_vin">%s</span></td></tr>
+    <tr><td>VIN del vehículo:</td><td><span id="vin_vehiculo">%s</span></td></tr>
+    <tr><td>VIN de la columna:</td><td><span id="vin_columna">%s</span></td></tr>
   </table>
 </body>
 </html>
@@ -318,7 +319,7 @@ void restart_timer_callback(TimerHandle_t xTimer) {
 
 esp_err_t root_handler(httpd_req_t *req)
 {
-    char response[sizeof(index_html) + 64];
+    char response[sizeof(index_html) + 2*VIN_LENGTH];
     snprintf(response, sizeof(response), index_html, vin_vehiculo, vin_columna);
     httpd_resp_send(req, response, HTTPD_RESP_USE_STRLEN);
     return ESP_OK;
