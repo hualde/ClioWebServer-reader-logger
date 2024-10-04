@@ -1,7 +1,7 @@
 {
     "version":            "1.1",
     "project_name":       "esp32_websocket_server",
-    "project_version":    "ccee6ed-dirty",
+    "project_version":    "5663711-dirty",
     "project_path":       "C:/Users/jhualde/Desktop/workspace/ClioWebServer",
     "idf_path":           "C:/Users/jhualde/esp/v5.2.2/esp-idf",
     "build_dir":          "C:/Users/jhualde/Desktop/workspace/ClioWebServer/build",
@@ -505,7 +505,7 @@
             "managed_reqs": [],
             "managed_priv_reqs": [],
             "file": "C:/Users/jhualde/Desktop/workspace/ClioWebServer/build/esp-idf/main/libmain.a",
-            "sources": [ "C:/Users/jhualde/Desktop/workspace/ClioWebServer/main/main.c", "C:/Users/jhualde/Desktop/workspace/ClioWebServer/main/log_reader.c" ],
+            "sources": [ "C:/Users/jhualde/Desktop/workspace/ClioWebServer/main/main.c", "C:/Users/jhualde/Desktop/workspace/ClioWebServer/main/CAN.c" ],
             "include_dirs": [ "." ]
         },
         "mbedtls": {

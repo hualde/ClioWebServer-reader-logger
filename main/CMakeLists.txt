@@ -1,10 +1,7 @@
-# See the build system documentation in IDF programming guide
-# for more information about component CMakeLists.txt files.
-
 idf_component_register(
-    SRCS main.c log_reader.c  # list the source files of this component
-    INCLUDE_DIRS "."          # optional, add here public include directories
-    PRIV_INCLUDE_DIRS         # optional, add here private include directories
-    REQUIRES                  # optional, list the public requirements (component names)
-    PRIV_REQUIRES             # optional, list the private requirements
+    SRCS main.c CAN.c  # Reemplazamos log_reader.c por CAN.c
+    INCLUDE_DIRS "."   # Esto ya incluye el directorio actual, donde estará CAN.h
+    PRIV_INCLUDE_DIRS  # opcional, añade aquí directorios de inclusión privados
+    REQUIRES           # opcional, lista los requisitos públicos (nombres de componentes)
+    PRIV_REQUIRES      # opcional, lista los requisitos privados
 )

@@ -11,7 +11,7 @@
 #include "lwip/sys.h"
 #include "esp_http_server.h"
 #include "esp_mac.h"
-#include "log_reader.h"
+#include "CAN.h"
 
 #define EXAMPLE_ESP_WIFI_SSID      "ESP32_Open_AP"
 #define EXAMPLE_MAX_STA_CONN       4
@@ -38,7 +38,7 @@ static esp_err_t http_server_handler(httpd_req_t *req)
     const char* resp_str = "<!DOCTYPE html>"
                            "<html>"
                            "<head>"
-                           "<title>ESP32 WebSocket Log Viewer</title>"
+                           "<title>ESP32 WebSocket CAN Viewer</title>"
                            "<script>"
                            "var socket;"
                            "function initWebSocket() {"
@@ -50,9 +50,7 @@ static esp_err_t http_server_handler(httpd_req_t *req)
                            "    };"
                            "    socket.onmessage = function(event) {"
                            "        console.log('Received message:', event.data);"
-                           "        var logData = JSON.parse(event.data);"
-                           "        document.getElementById('timestamp').textContent = logData.timestamp;"
-                           "        document.getElementById('message').textContent = logData.message;"
+                           "        document.getElementById('can-message').textContent = event.data;"
                            "    };"
                            "    socket.onerror = function(error) {"
                            "        console.error('WebSocket error:', error);"
@@ -62,21 +60,20 @@ static esp_err_t http_server_handler(httpd_req_t *req)
                            "        setTimeout(initWebSocket, 2000);"
                            "    };"
                            "}"
-                           "function requestLatestLog() {"
+                           "function requestLatestMessage() {"
                            "    if (socket && socket.readyState === WebSocket.OPEN) {"
-                           "        socket.send('get_log');"
+                           "        socket.send('get_message');"
                            "    }"
                            "}"
                            "window.addEventListener('load', function() {"
                            "    initWebSocket();"
-                           "    setInterval(requestLatestLog, 1000);"
+                           "    setInterval(requestLatestMessage, 1000);"
                            "});"
                            "</script>"
                            "</head>"
                            "<body>"
-                           "<h1>ESP32 Log Viewer</h1>"
-                           "<p>Timestamp: <span id='timestamp'>Waiting...</span></p>"
-                           "<p>Message: <span id='message'>Waiting...</span></p>"
+                           "<h1>ESP32 CAN Message Viewer</h1>"
+                           "<p>Latest CAN Message: <span id='can-message'>Waiting...</span></p>"
                            "</body>"
                            "</html>";
     httpd_resp_set_type(req, "text/html");
@@ -118,12 +115,9 @@ static esp_err_t websocket_handler(httpd_req_t *req)
         ESP_LOGI(TAG, "Received packet with message: %s", ws_pkt.payload);
     }
 
-    LogEntry latest_log = get_latest_log();
-    char response[256];
-    snprintf(response, sizeof(response), "{\"timestamp\":\"%s\",\"message\":\"%s\"}", 
-             latest_log.timestamp, latest_log.message);
-    ws_pkt.payload = (uint8_t*)response;
-    ws_pkt.len = strlen(response);
+    const char* latest_message = get_latest_can_message();
+    ws_pkt.payload = (uint8_t*)latest_message;
+    ws_pkt.len = strlen(latest_message);
 
     ret = httpd_ws_send_frame(req, &ws_pkt);
     if (ret != ESP_OK) {
@@ -212,7 +206,8 @@ void app_main(void)
 
     ESP_LOGI(TAG, "ESP_WIFI_MODE_AP");
     wifi_init_softap();
-    init_log_reader();
+    init_can();
+    start_can_tasks();
     server = start_webserver();
 
     if (server == NULL) {
