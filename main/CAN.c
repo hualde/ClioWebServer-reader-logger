@@ -12,23 +12,25 @@
 #include <string.h>
 
 #define TAG "TWAI_EXAMPLE"
-#define RESTART_INTERVAL_US (120000000) // 2 minutes in microseconds
+#define RESTART_INTERVAL_US (1800000000) // 30 minutes in microseconds
 #define MAX_CONSECUTIVE_ERRORS 5
-#define FRAMES_BEFORE_COOLDOWN 10
+#define FRAMES_BEFORE_COOLDOWN 60
 #define COOLDOWN_TIME_MS 1000
 #define BASE_RETRY_INTERVAL_MS 100
 #define MAX_RETRY_INTERVAL_MS 5000
-#define TRANSMIT_INTERVAL_MS 5000 // 5 seconds between transmissions
+#define TRANSMIT_INTERVAL_MS 1000 // 1 seconds between transmissions
 #define ERROR_RECOVERY_DELAY_MS 10000 // 10 seconds delay for error recovery
 #define BUFFER_CHECK_INTERVAL_MS 30000 // Check buffer status every 30 seconds
 #define TX_QUEUE_LEN 32 // Increased TX queue length
 #define RX_QUEUE_LEN 32 // Increased RX queue length
+#define MAX_REINIT_ATTEMPTS 3 // Maximum number of reinitialization attempts
 
 static char latest_message[50];
 static int consecutive_errors = 0;
 static int frames_sent = 0;
 static SemaphoreHandle_t twai_mutex;
 static QueueHandle_t tx_task_queue;
+static int reinit_attempts = 0;
 
 static esp_err_t init_twai(void) {
     twai_general_config_t g_config = TWAI_GENERAL_CONFIG_DEFAULT(GPIO_NUM_18, GPIO_NUM_19, TWAI_MODE_NORMAL);
@@ -58,7 +60,20 @@ static esp_err_t reinit_twai(void) {
     twai_stop();
     twai_driver_uninstall();
     vTaskDelay(pdMS_TO_TICKS(1000)); // Wait for 1 second before reinitializing
-    return init_twai();
+    esp_err_t result = init_twai();
+    if (result == ESP_OK) {
+        reinit_attempts = 0; // Reset the reinit attempts counter on success
+        ESP_LOGI(TAG, "TWAI driver reinitialized successfully");
+    } else {
+        reinit_attempts++;
+        ESP_LOGE(TAG, "Failed to reinitialize TWAI driver: %s (Attempt %d/%d)", 
+                 esp_err_to_name(result), reinit_attempts, MAX_REINIT_ATTEMPTS);
+        if (reinit_attempts >= MAX_REINIT_ATTEMPTS) {
+            ESP_LOGE(TAG, "Max reinit attempts reached. Restarting system...");
+            esp_restart();
+        }
+    }
+    return result;
 }
 
 static void check_twai_status(void) {
@@ -75,6 +90,9 @@ static void check_twai_status(void) {
             ESP_LOGE(TAG, "TWAI controller is in bus-off state. Initiating recovery...");
             twai_initiate_recovery();
             vTaskDelay(pdMS_TO_TICKS(5000)); // Wait for recovery to complete
+            if (reinit_twai() != ESP_OK) {
+                ESP_LOGE(TAG, "Failed to recover from bus-off state");
+            }
         }
 
         // Check if buffers are near full and clear if necessary
@@ -92,22 +110,13 @@ static void error_recovery_procedure(void) {
     ESP_LOGI(TAG, "Starting error recovery procedure");
     xSemaphoreTake(twai_mutex, portMAX_DELAY);
     
-    // Stop and uninstall the driver
-    twai_stop();
-    twai_driver_uninstall();
-    
-    // Wait for a while before reinitializing
-    vTaskDelay(pdMS_TO_TICKS(ERROR_RECOVERY_DELAY_MS));
-    
-    // Reinitialize the driver
-    esp_err_t result = init_twai();
-    if (result != ESP_OK) {
-        ESP_LOGE(TAG, "Failed to reinitialize TWAI driver: %s", esp_err_to_name(result));
-        esp_restart(); // If reinitialization fails, restart the device
+    if (reinit_twai() != ESP_OK) {
+        ESP_LOGE(TAG, "Error recovery failed");
+    } else {
+        ESP_LOGI(TAG, "Error recovery procedure completed successfully");
     }
     
     xSemaphoreGive(twai_mutex);
-    ESP_LOGI(TAG, "Error recovery procedure completed");
 }
 
 static void twai_transmit_task(void *arg) {
