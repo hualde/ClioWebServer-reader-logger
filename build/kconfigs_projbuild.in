@@ -3,4 +3,4 @@ source "C:/Users/jhualde/esp/v5.2.2/esp-idf/components/esp_app_format/Kconfig.pr
 source "C:/Users/jhualde/esp/v5.2.2/esp-idf/components/esp_rom/Kconfig.projbuild"
 source "C:/Users/jhualde/esp/v5.2.2/esp-idf/components/esptool_py/Kconfig.projbuild"
 source "C:/Users/jhualde/esp/v5.2.2/esp-idf/components/partition_table/Kconfig.projbuild"
-source "C:/Users/jhualde/Desktop/workspace/ClioWebServer/main/Kconfig.projbuild"
+source "C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/main/Kconfig.projbuild"
