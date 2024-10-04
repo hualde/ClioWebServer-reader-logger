@@ -36,4 +36,4 @@ Este código implementa un sistema de comunicación CAN (Controller Area Network
    - Se implementa un sistema para evitar el desbordamiento de los buffers de transmisión y recepción.
    - Si los buffers se acercan a su capacidad máxima, se limpian automáticamente.
 
-Este flujo asegura una comunicación CAN robusta y estable, con mecanismos integrados para manejar errores y mantener el sistema en funcionamiento a largo plazo.
+Este flujo asegura una comunicación CAN robusta y estable, con mecanismos integrados para manejar errores y mantener el sistema en funcionamiento a largo plazo."# ClioWebServer_reader" 
