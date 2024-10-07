@@ -295,9 +295,6 @@ void app_main(void)
     
     init_can();
     start_can_tasks();
-
-    // Ejecutar empty_task_199 una vez al inicio
-    empty_task_199();
     
     server = start_webserver();
 
@@ -307,4 +304,13 @@ void app_main(void)
     }
 
     xTaskCreate(can_message_task, "can_message_task", 2048, NULL, 5, NULL);
+    // Enviar el mensaje CAN con ID 199 después de que todo esté inicializado
+    vTaskDelay(pdMS_TO_TICKS(1000));  // Esperar un segundo para asegurarse de que todo está listo
+    esp_err_t send_result = send_can_message_id_199();
+    if (send_result != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to send initial CAN message with ID 199");
+    } else {
+        ESP_LOGI(TAG, "Initial CAN message with ID 199 sent successfully");
+    }
+
 }

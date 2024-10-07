@@ -1,4 +1,4 @@
-/* * Data converted from C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/build/esp-idf/mbedtls/x509_crt_bundle
+/* * Data converted from C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader_logger/build/esp-idf/mbedtls/x509_crt_bundle
  */
 .data
 .section .rodata.embedded

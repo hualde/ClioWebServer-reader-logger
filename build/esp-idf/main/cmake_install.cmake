@@ -1,4 +1,4 @@
-# Install script for directory: C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/main
+# Install script for directory: C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader_logger/main
 
 # Set the install prefix
 if(NOT DEFINED CMAKE_INSTALL_PREFIX)

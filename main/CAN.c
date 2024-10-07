@@ -83,8 +83,21 @@ const char* get_latest_can_message(void) {
     return message_copy;
 }
 
-void empty_task_199(void) {
-    uint8_t data[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
-    send_can_frame(0x199, data, 8);
-    ESP_LOGI(TAG, "Tarea vacía con ID 199 ejecutada");
+esp_err_t send_can_message_id_199(void) {
+    twai_message_t message;
+    message.identifier = 0x199;
+    message.extd = 0;
+    message.rtr = 0;
+    message.data_length_code = 8;
+    for (int i = 0; i < 8; i++) {
+        message.data[i] = i;  // Puedes cambiar esto por los datos que quieras enviar
+    }
+
+    esp_err_t result = twai_transmit(&message, pdMS_TO_TICKS(1000));
+    if (result != ESP_OK) {
+        ESP_LOGE(TAG, "Failed to send message: %s", esp_err_to_name(result));
+    } else {
+        ESP_LOGI(TAG, "Message sent successfully");
+    }
+    return result;
 }

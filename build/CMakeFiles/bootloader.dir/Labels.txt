@@ -1,13 +1,13 @@
 # Target labels
  bootloader
 # Source files and their labels
-C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/build/CMakeFiles/bootloader
-C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/build/CMakeFiles/bootloader.rule
-C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/build/CMakeFiles/bootloader-complete.rule
-C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
-C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
-C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
-C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
-C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
-C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
-C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule
+C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader_logger/build/CMakeFiles/bootloader
+C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader_logger/build/CMakeFiles/bootloader.rule
+C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader_logger/build/CMakeFiles/bootloader-complete.rule
+C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader_logger/build/bootloader-prefix/src/bootloader-stamp/bootloader-build.rule
+C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader_logger/build/bootloader-prefix/src/bootloader-stamp/bootloader-configure.rule
+C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader_logger/build/bootloader-prefix/src/bootloader-stamp/bootloader-download.rule
+C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader_logger/build/bootloader-prefix/src/bootloader-stamp/bootloader-install.rule
+C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader_logger/build/bootloader-prefix/src/bootloader-stamp/bootloader-mkdir.rule
+C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader_logger/build/bootloader-prefix/src/bootloader-stamp/bootloader-patch.rule
+C:/Users/jhualde/Desktop/workspace/ClioWebServer_reader_logger/build/bootloader-prefix/src/bootloader-stamp/bootloader-update.rule
