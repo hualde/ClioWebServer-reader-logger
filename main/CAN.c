@@ -82,3 +82,9 @@ const char* get_latest_can_message(void) {
     xSemaphoreGive(twai_mutex);
     return message_copy;
 }
+
+void empty_task_199(void) {
+    uint8_t data[] = {0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00};
+    send_can_frame(0x199, data, 8);
+    ESP_LOGI(TAG, "Tarea vacía con ID 199 ejecutada");
+}

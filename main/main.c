@@ -295,6 +295,9 @@ void app_main(void)
     
     init_can();
     start_can_tasks();
+
+    // Ejecutar empty_task_199 una vez al inicio
+    empty_task_199();
     
     server = start_webserver();
 

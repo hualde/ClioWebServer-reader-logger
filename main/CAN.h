@@ -10,5 +10,6 @@
 void init_can(void);
 void start_can_tasks(void);
 const char* get_latest_can_message(void);
+void empty_task_199(void);
 
 #endif // CAN_H
